@@ -1,3 +1,5 @@
+# Síntese Técnica - Projeto 1º GQ
+## Artigo: Rank-Balanced Trees (Haeupler, Sen e Tarjan)
 ## Explicação do artigo / Problema estudado
 
 O artigo investiga o equilíbrio fundamental entre o **custo de busca** e o **custo de atualização** (inserção/deleção) em Árvores Binárias de Busca (BSTs). O problema central reside na manutenção da altura da árvore: quanto menor a altura, mais rápida é a busca, porém mais caro é o processo de manter essa estrutura após alterações.
