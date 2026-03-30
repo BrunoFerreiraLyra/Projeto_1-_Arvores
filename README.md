@@ -25,14 +25,55 @@ A estrutura clássica analisada é a **Árvore de Busca Binária Balanceada por 
 * **Na Rubro-Negra clássica:** Os ranks são análogos às cores. As regras permitem diferenças de rank 0 (nó vermelho) ou 1 (nó preto), com restrições que impedem dois 0s seguidos. Isso dá flexibilidade, mas resulta em uma árvore potencialmente mais alta e menos eficiente para buscas puras.
 ## Contribuição principal / Ideia de solução
 
-A solução proposta são as **WAVL Trees (Weak AVL Trees)**. A ideia dos autores foi criar uma estrutura que utiliza as regras de rank da AVL, mas descarta a proibição do "nó 2,2" durante as deleções.
+A solução proposta são as **WAVL Trees (Weak AVL Trees)**. A inovação central dos autores foi permitir a existência do **"nó 2,2"** durante as operações de deleção, algo que é estritamente proibido nas AVLs clássicas.
 
-O mecanismo funciona da seguinte forma:
+### Entendendo o "Nó 2,2"
+Na estrutura de ranks, descrevemos um nó pela diferença de rank entre ele e os seus filhos (chamado de nó **i, j**).
+* **Nó 1,1 ou 1,2:** São os estados padrão de uma árvore equilibrada.
+* **Nó 2,2:** É um nó onde **ambos os filhos têm o rank 2 níveis abaixo do pai**. 
 
-* **Inserção "Forte":** Quando um nó é inserido, a WAVL segue as regras rigorosas da AVL. Se um nó se torna 2,2, a árvore realiza rotações para "consertar" o rank. Isso garante que, em um cenário de apenas inserções, a WAVL é identicamente uma AVL, mantendo a altura ótima de **1.44 log n**.
+Enquanto a AVL clássica considera o nó 2,2 um erro que exige rotações imediatas para ser "consertado", a WAVL aceita este estado como um equilíbrio "fraco" (weak), mas suficiente.
 
-* **Deleção "Fraca" (Weak):** Aqui reside a inovação. Ao deletar um nó, se a árvore detectar um desequilíbrio que criaria um nó com diferença de rank 3 (violação), ela permite que o nó pai sofra um *demote* (redução de rank) ou uma rotação simples. Ao contrário da AVL, a WAVL permite que o nó se torne um "nó 2,2" (onde ambos os filhos possuem uma **diferença de rank** de tamanho 2 em relação ao pai).
+### Funcionamento do Mecanismo:
 
-* **Interrupção da Propagação:** Essa permissão para o nó ser 2,2 funciona como um **"amortecedor"**. Na AVL clássica, esse desequilíbrio forçaria novas rotações em níveis superiores. Na WAVL, o rebalanceamento frequentemente para no primeiro ou segundo nível acima da alteração.
+* **Inserção "Forte":** Durante a inserção, a WAVL comporta-se exatamente como uma AVL. Se um nó tenta tornar-se 2,2, a árvore realiza rotações. Isso garante que a altura se mantenha excelente (**1.44 log n**).
 
-**Resultado Técnico:** As WAVL conseguem provar matematicamente que o esforço de rebalanceamento é constante (**O(1) amortizado**), assim como nas Rubro-Negras, mas preservando uma altura de pior caso muito mais competitiva.
+* **Deleção "Fraca" (Weak):** Ao remover um nó, se a árvore detetar uma violação grave (diferença de rank 3), ela realiza um *demote* (redução do rank do pai). Se essa redução resultar num **nó 2,2**, a WAVL permite que a estrutura fique assim e interrompe o processo.
+
+* **Interrupção da Propagação:** O nó 2,2 atua como um **"amortecedor"**. Na AVL, o desequilíbrio propagaria rotações em cascata até à raiz. Na WAVL, o nó 2,2 "absorve" o impacto da deleção e encerra o rebalanceamento ali mesmo.
+
+**Resultado Técnico:** Esta flexibilidade permite que a WAVL tenha um custo de rebalanceamento constante (**O(1) amortizado**), unindo a velocidade de atualização das Rubro-Negras com a excelente altura de busca das AVLs.
+## Contraexemplo: AVL vs. WAVL na Deleção
+
+### Cenário de Inserção (Preparando a árvore)
+Imagine a inserção da seguinte sequência de nós em ambas as árvores: 
+`[50, 25, 75, 10, 30, 60, 80, 5, 15, 27, 35]`
+
+Isso resultará em uma árvore com altura 4, onde o lado esquerdo é mais denso que o direito, mas ainda dentro dos limites de equilíbrio de uma AVL.
+
+### O Problema (Operação de deleção)
+O teste consiste em **deletar o nó 80** (um nó folha na extremidade direita).
+
+#### 1. A Falha de Eficiência na AVL (O Caso Clássico)
+Ao remover o nó **80**:
+* O nó **75** perde altura (reduz de 1 para 0).
+* O nó **50 (raiz)** detecta um desequilíbrio: sua subárvore esquerda tem altura 3 e a direita agora tem altura 1 (diferença de 2).
+* **Ação:** A AVL é forçada a realizar uma rotação à direita no nó 50 para reestabelecer o equilíbrio.
+* **O Problema:** Em árvores de grande escala, essa rotação no nível da raiz pode alterar o fator de equilíbrio de nós superiores (caso esta árvore fosse parte de uma estrutura maior), propagando o custo de rebalanceamento por todo o caminho até o topo (**Theta(log n)** operações).
+
+#### 2. A Eficiência da WAVL (A Solução do Artigo)
+Ao remover o nó **80** na WAVL:
+* O nó **75** identifica que seu rank não atende mais às regras estritas, tornando-se um "nó 2,2" (visto anteriormente como um amortecedor).
+* **Ação:** Em vez de disparar uma rotação imediata que afetaria a estrutura global, a WAVL executa apenas um **Rank-Demote** (redução do valor do rank do nó 75 e, se necessário, do 50).
+* **O ponto chave:** A regra da WAVL é "fraca" (*Weak*). Ela permite que o nó 50 permaneça em uma configuração que a AVL consideraria intolerável, desde que os ranks respeitem as novas paridades permitidas pelo artigo.
+* **Resultado:** O rebalanceamento é interrompido quase instantaneamente sem a necessidade de rotações em cascata. O esforço de atualização permanece constante (**O(1) amortizado**).
+## Implementação
+## Conclusão / Crítica Final
+
+A contribuição das **WAVL Trees** prova que o equilíbrio estrito das AVLs é desnecessário para garantir uma busca eficiente. O artigo demonstra que, ao "relaxar" as regras de rank durante a deleção, é possível reduzir o custo de rebalanceamento de **Theta(log n)** (caso da AVL clássica) para **O(1) amortizado**, sem degradar a altura da árvore para os níveis de uma Rubro-Negra.
+
+Enquanto a AVL mantém um fator de equilíbrio rígido que força sucessivas rotações, a WAVL utiliza a "folga" nos ranks (permitindo o **nó 2,2**) para interromper a propagação de reestruturação precocemente. Isso resolve o dilema clássico entre performance de busca (AVL) e performance de atualização (Rubro-Negra), provando que uma estrutura pode ser ótima em ambas as frentes.
+
+## Opinião Técnica
+
+A implementação da WAVL é uma evolução lógica das BSTs balanceadas. A principal vantagem não é apenas a altura menor que a de uma Rubro-Negra, mas o fato de que a lógica de inserção permanece idêntica à da AVL, facilitando a migração de sistemas que já utilizam essa estrutura, mas sofrem com o *overhead* de deleção. O artigo é bem-sucedido ao unificar essas propriedades sob a métrica de **ranks**, simplificando o que antes eram tratadas como regras de coloração ou altura independentes.
